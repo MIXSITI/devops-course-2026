@@ -132,3 +132,25 @@ ClientAliveCountMax 2
 8. Проверить `ssh devops`, отказ для `root` и отказ при `PubkeyAuthentication=no`.
 9. Задать политики UFW, разрешить 2222, 80 и 443, выполнить `ufw enable`, заменить правило 2222 на `limit`, включить `ufw logging medium`.
 10. Добавить `192.168.56.101 devops.local` в hosts хоста и строку FQDN в `/etc/hosts` гостя.
+
+## 8. Веб-сервер
+
+- Пакет: `nginx` 1.28.3 (Ubuntu). Профиль UFW `Nginx Full` не добавлялся: порты 80 и 443 уже разрешены правилами работы № 5.
+- Активная конфигурация: `/etc/nginx/sites-available/devops-site`, ссылка `/etc/nginx/sites-enabled/devops-site`. Стандартный ресурс отключён: ссылка `/etc/nginx/sites-enabled/default` удалена, файл `/etc/nginx/sites-available/default` сохранён.
+- Каталог ресурса: `/var/www/devops-site`, владелец `devops:devops`. Каталог `755`, файлы `644`. Эти права выставляет `rsync --chmod=D755,F644`.
+- Сертификат: `/etc/ssl/certs/devops.crt`, права `644`, владелец `root`. Закрытый ключ: `/etc/ssl/private/devops.key`, права `600`, владелец `root`. Ключ за пределы `/etc/ssl/private` не копируется. Срок: выпущен 18 октября 2026, истекает 18 октября 2027. SAN: `DNS:devops.local`. Сертификат самоподписанный: subject и issuer равны `CN=devops.local`.
+- Команда выпуска:
+
+```
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/devops.key \
+  -out /etc/ssl/certs/devops.crt \
+  -subj "/CN=devops.local" \
+  -addext "subjectAltName=DNS:devops.local"
+```
+
+- HTTP на порту 80 отвечает `301` на `https://$host$request_uri`. HTTPS слушает 443, протоколы TLSv1.2 и TLSv1.3. Заголовок HSTS не используется.
+- Доставка: `scripts/deploy.sh` из репозитория, одна SSH-сессия rsync (cwRsync и его ssh). Проверка после доставки: `curl --cacert ~/devops.crt https://devops.local`.
+- В блоке HTTPS сохранён `location /app/`, добавленный для последующей работы с контейнером. Он не заменяет статический ресурс `devops.local`.
+
+Снимок состояния после перевода ресурса на HTTPS: `04-nginx-https` (18 октября 2026, 17:55 UTC+3).
