@@ -44,5 +44,20 @@ else
     perms="files=$ww key=$keymode"
 fi
 check "Нет файлов с записью для всех, права ключа 600" "ok" "$perms"
+
+echo "[5] Контейнеризация"
+check "Служба docker активна" "active" "$(systemctl is-active docker)"
+db_health="$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null || echo missing)"
+check "Контейнер СУБД в состоянии healthy" "healthy" "$db_health"
+listeners="$(ss -tln | awk 'NR>1 {print $4}' | grep -E ':(5000|5432)$' || true)"
+port_state="ok"
+while IFS= read -r addr; do
+    [[ -z "$addr" ]] && continue
+    if [[ "$addr" != "127.0.0.1:5000" && "$addr" != "127.0.0.1:5432" ]]; then
+        port_state="$addr"
+    fi
+done <<< "$listeners"
+check "Порты 5000 и 5432 не слушаются вне 127.0.0.1" "ok" "$port_state"
+check "Права файла ~/app/.env равны 600" "600" "$(stat -c '%a' /home/devops/app/.env)"
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1

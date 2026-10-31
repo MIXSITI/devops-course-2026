@@ -154,3 +154,15 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 - В блоке HTTPS сохранён `location /app/`, добавленный для последующей работы с контейнером. Он не заменяет статический ресурс `devops.local`.
 
 Снимок состояния после перевода ресурса на HTTPS: `04-nginx-https` (18 октября 2026, 17:55 UTC+3).
+
+## 9. Контейнеризация
+
+- Docker Engine установлен из официального репозитория `https://download.docker.com/linux/ubuntu` (suite `resolute`, компонент `stable`), не из пакета `docker.io`. Версия Engine: 29.9.1 (`5:29.9.1-1~ubuntu.26.04~resolute`). Docker Compose: v5.6.0.
+- Группа `docker`: учётная запись `devops` (у неё уже есть `sudo`). Участник этой группы может смонтировать корень хоста в контейнер и тем самым получить права root, поэтому в группу не добавляют учётки без sudo.
+- Проект на сервере: `/home/devops/app`. Файл секретов `/home/devops/app/.env`, права `600`, владелец `devops`. В репозитории его нет; шаблон — `app/.env.example`. Доставка: `rsync -avz --delete --exclude=.env`.
+- Образ приложения: `devops-app:1.0`, процесс в контейнере — пользователь `app` (uid 999), не root.
+- Публикация портов: приложение только `127.0.0.1:5000` → контейнер `5000`. Порт СУБД не публикуется, обращение по имени `db` в сети `app_backend`.
+- Именованный том: `app_db_data`, смонтирован в `/var/lib/postgresql/data`. Образ СУБД `postgres:16-alpine`. `docker compose down` сохраняет том, `docker compose down -v` удаляет его.
+- Обратный прокси: Nginx принимает HTTPS и передаёт `/app/` на `http://127.0.0.1:5000/`. Статический ресурс `devops.local` сохранён.
+
+Снимок состояния: `05-docker-compose`.
