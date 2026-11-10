@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/mixsiti/devops-ci-app"
+app_tag: "4181a531ac61c9e619b4d69fcbfc1ed130d13c74"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000

@@ -166,3 +166,18 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 - Обратный прокси: Nginx принимает HTTPS и передаёт `/app/` на `http://127.0.0.1:5000/`. Статический ресурс `devops.local` сохранён.
 
 Снимок состояния: `05-docker-compose`.
+
+## 10. Ansible
+
+- Проект: каталог `ansible/` в репозитории `devops-course-2026`, ветка `feature/ansible`.
+- Управляющий узел: Ubuntu 24.04 в WSL (`ansible-core` 2.16.3, `sshpass` 1.09). Репозиторий для запуска лежит в домашнем каталоге WSL, не на `/mnt/c`.
+- Управляемый узел: `devops-vm`, снимок `01-clean-install`, Ubuntu Server 26.04.1, Host-only `192.168.56.101`.
+- Первичный inventory `bootstrap.ini`: пользователь установки `mix` (в методичке эта роль названа `student`), порт 22, ключ `~/.ssh/devops_vm`. Пароль нужен только для первого `sudo`.
+- Последующий inventory `prod.ini`: пользователь `devops`, тот же ключ, `sudo` без пароля.
+- Роли: `base` (пакеты и Docker Engine из официального репозитория), `ssh` (учётная запись `devops`, ключ, `sudo`, hardening, UFW), `nginx` (обратный прокси на порт контейнера), `app` (загрузка образа и контейнер).
+- Образ: `ghcr.io/mixsiti/devops-ci-app`. Тег — полный SHA `4181a531ac61c9e619b4d69fcbfc1ed130d13c74`, не `latest`.
+- Контейнер `devops-ci-app` публикует `127.0.0.1:5000` на порт контейнера `5000`. Наружу открыты только 22/tcp и 80/tcp.
+- Проверка здоровья: `http://127.0.0.1:5000/health` на VM и `http://192.168.56.101/health` с управляющего узла.
+- Первый запуск: `ansible-playbook -i inventory/bootstrap.ini site.yml` из каталога `ansible/`. Повторный: `ansible-playbook site.yml`. Аудит без изменений: `ansible-playbook verify.yml`.
+- В `ansible.cfg` включено `force_handlers = True`. На VM для модулей Docker установлен `python3-requests`.
+
